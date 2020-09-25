@@ -8,35 +8,35 @@
  */
 const request = require('request');
 
-// const fetchMyIP = function(callback) {
-//   request('https://api.ipify.org?format=json', (error, response, body) => {
-//     if (error) return callback(error, null);
+const fetchMyIP = function(func) {
+  request('https://api.ipify.org?format=json', (error, response, body) => {
+    if (error) return func(error, null);
 
-//     if (response.statusCode !== 200) {
-//       callback(Error(`Status Code ${response.statusCode} when fetching IP: ${body}`), null);
-//       return;
-//     }
+    if (response.statusCode !== 200) {
+      func(Error(`Status Code ${response.statusCode} when fetching IP: ${body}`), null);
+      return;
+    }
 
-//     const ip = JSON.parse(body).ip;
-//     callback(null, ip);
-//   });
-// };
+    const ip = JSON.parse(body).ip;
+    func(null, ip);
+  });
+};
 
 
-// const fetchCoordsByIP = function(ip, callback) {
-//   request(`https://ipvigilante.com/json/${ip}`, (error, response, body) => {
-//     if (error) {
-//       return callback(error, null);
-//     }
-//     if (response.statusCode !== 200) {
-//       callback(Error(`Status code ${response.statusCode} when fetching coordinates: ${body}`), null);
-//       return;
-//     }
+const fetchCoordsByIP = function(ip, callback) {
+  request(`https://ipvigilante.com/json/${ip}`, function(error, response, body) {
+    if (error) {
+      return callback(error, null);
+    }
+    if (response.statusCode !== 200) {
+      callback(Error(`Status code ${response.statusCode} when fetching coordinates: ${body}`), null);
+      return;
+    }
     
-//     const { latitude, longitude } = JSON.parse(body).data;
-//     callback(null, { latitude, longitude });
-//   });
-// };
+    const { latitude, longitude } = JSON.parse(body).data;
+    callback(null, { latitude, longitude });
+  });
+};
 
 
 /**
@@ -52,7 +52,7 @@ const request = require('request');
 const fetchISSFlyOverTimes = function(coords, callback) {
   const url = `http://api.open-notify.org/iss-pass.json?lat=${coords.latitude}&lon=${coords.longitude}`;
 
-  request(url, (error, response, body) => {
+  request(url, function(error, response, body)  {
     if (error) {
       callback(error, null);
       return;
@@ -68,5 +68,39 @@ const fetchISSFlyOverTimes = function(coords, callback) {
   });
 };
 
-// Don't need to export the other functions since we are not testing them right now.
-module.exports = { fetchISSFlyOverTimes };
+
+
+// iss.js 
+
+/**
+ * Orchestrates multiple API requests in order to determine the next 5 upcoming ISS fly overs for the user's current location.
+ * Input:
+ *   - A callback with an error or results. 
+ * Returns (via Callback):
+ *   - An error, if any (nullable)
+ *   - The fly-over times as an array (null if error):
+ *     [ { risetime: <number>, duration: <number> }, ... ]
+ */ 
+const nextISSTimesForMyLocation = function (callback) {
+  fetchMyIP(function(error, ip)  {
+    if (error) {
+      console.log(error);
+      return;
+    } else {
+      fetchCoordsByIP(ip, function(error, data) {
+        if (error) {
+          console.log(error);
+          return;
+        } else {
+          fetchISSFlyOverTimes(data, callback)
+          
+        }
+      })
+    }
+  })
+}
+
+
+
+
+module.exports = { nextISSTimesForMyLocation }
